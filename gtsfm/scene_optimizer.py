@@ -65,7 +65,7 @@ class SceneOptimizer:
     def __init__(
         self,
         retriever: RetrieverBase,
-        correspondence_generator: CorrespondenceGeneratorBase,
+        correspondence_generators: List[CorrespondenceGeneratorBase],
         two_view_estimator: TwoViewEstimator,
         multiview_optimizer: MultiViewOptimizer,
         dense_multiview_optimizer: Optional[MVSBase] = None,
@@ -78,7 +78,7 @@ class SceneOptimizer:
     ) -> None:
         """pose_angular_error_thresh is given in degrees"""
         self.retriever = retriever
-        self.correspondence_generator = correspondence_generator
+        self.correspondence_generators = correspondence_generators
         self.two_view_estimator = two_view_estimator
         self.multiview_optimizer = multiview_optimizer
         self.dense_multiview_optimizer = dense_multiview_optimizer

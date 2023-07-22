@@ -5,7 +5,7 @@ import os
 import time
 from abc import abstractmethod, abstractproperty
 from pathlib import Path
-from typing import Any, Dict, Tuple
+from typing import Any, Dict, Tuple, List
 
 import dask
 import hydra
@@ -16,13 +16,13 @@ from hydra.utils import instantiate
 from omegaconf import OmegaConf
 
 import gtsfm.utils.logger as logger_utils
+from gtsfm.common.keypoints import Keypoints
+import gtsfm.utils.correspondence as correspondence_utils
 from gtsfm.common.gtsfm_data import GtsfmData
-from gtsfm.frontend.correspondence_generator.image_correspondence_generator import ImageCorrespondenceGenerator
 from gtsfm.loader.loader_base import LoaderBase
 from gtsfm.retriever.retriever_base import ImageMatchingRegime
 from gtsfm.scene_optimizer import SceneOptimizer
 from gtsfm.two_view_estimator import TWO_VIEW_OUTPUT, TwoViewEstimationReport, run_two_view_estimator_as_futures
-from gtsfm.ui.process_graph_generator import ProcessGraphGenerator
 
 logger = logger_utils.get_logger()
 
@@ -194,7 +194,7 @@ class GtsfmRunnerBase:
 
         logger.info("\n\nSceneOptimizer: " + str(scene_optimizer))
         return scene_optimizer
-    
+
     def setup_ssh_cluster_with_retries(self):
         """Sets up SSH Cluster allowing multiple retries upon connection failures."""
         workers = OmegaConf.load(
@@ -241,10 +241,11 @@ class GtsfmRunnerBase:
             client = Client(cluster)
 
         # create process graph
-        process_graph_generator = ProcessGraphGenerator()
-        if isinstance(self.scene_optimizer.correspondence_generator, ImageCorrespondenceGenerator):
-            process_graph_generator.is_image_correspondence = True
-        process_graph_generator.save_graph()
+        # TODO(Handle this)
+        # process_graph_generator = ProcessGraphGenerator()
+        # if isinstance(self.scene_optimizer.correspondence_generator, ImageCorrespondenceGenerator):
+        #     process_graph_generator.is_image_correspondence = True
+        # process_graph_generator.save_graph()
 
         # TODO(Ayush): Use futures
         image_pair_indices = self.scene_optimizer.retriever.get_image_pairs(
@@ -254,13 +255,24 @@ class GtsfmRunnerBase:
         intrinsics = self.loader.get_all_intrinsics()
 
         with performance_report(filename="correspondence-generator-dask-report.html"):
-            (
-                keypoints_list,
-                putative_corr_idxs_dict,
-            ) = self.scene_optimizer.correspondence_generator.generate_correspondences(
-                client,
-                self.loader.get_all_images_as_futures(client),
-                image_pair_indices,
+            keypoints_from_all_corr_generators: List[List[Keypoints]] = []
+            putatutive_corr_idxs_from_all_corr_generators: List[Dict[Tuple[int, int], np.ndarray]] = []
+
+            for corr_generator in self.scene_optimizer.correspondence_generators:
+                (
+                    keypoints_list,
+                    putative_corr_idxs_dict,
+                ) = corr_generator.generate_correspondences(
+                    client,
+                    self.loader.get_all_images_as_futures(client),
+                    image_pair_indices,
+                )
+
+                keypoints_from_all_corr_generators.append(keypoints_list)
+                putatutive_corr_idxs_from_all_corr_generators.append(putative_corr_idxs_dict)
+
+            keypoints_list, putative_corr_idxs_dict = correspondence_utils.merge_correspondences(
+                keypoints_from_all_corr_generators, putatutive_corr_idxs_from_all_corr_generators
             )
 
             two_view_results_dict = run_two_view_estimator_as_futures(
