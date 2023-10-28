@@ -8,7 +8,7 @@ channels:
   - conda-forge
 dependencies:
   # python essentials
-  - python=3.8
+  - python=3.10
   - pip
   # formatting and dev environment
   - black
@@ -34,9 +34,9 @@ dependencies:
   - scipy
   - hydra-core
   # 3rd party algorithms for different modules
-  - cudatoolkit>=10.2
-  - pytorch>=1.12.0
-  - torchvision>=0.13.0
+  - cudatoolkit>=12.1
+  - pytorch
+  - torchvision
   - kornia
   # io
   - h5py

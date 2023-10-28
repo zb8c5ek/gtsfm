@@ -1,0 +1,16 @@
+open3d
+opencv-python>=4.5.4.58
+pydegensac
+colour
+pycolmap>=0.1.0
+trimesh[easy]
+gtsam==4.2
+pydot
+dask
+dask distributed
+h5py
+simplejson
+hydra-core
+tabulate
+seaborn
+kornia
